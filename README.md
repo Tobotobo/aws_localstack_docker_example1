@@ -14,6 +14,13 @@ https://docs.localstack.cloud/getting-started/installation/#docker-compose
 dockerhub - localstack/localstack  
 https://hub.docker.com/r/localstack/localstack  
 
+## 留意事項
+* LocalStack は無料のコミュニティ版と有料のプロ版があり、有料のプロ版でないと使えない機能が多数ある
+* 本リポジトリでは、無料のコミュニティ版を使用している
+* LocalStack はテスト等の利便性を優先し、デフォルトで IAM ポリシーが無効になっている（設定しても無視される）
+* IAM ポリシーを有効にする機能は、有料のプロ版でないと使用できない（ENFORCE_IAM とか）
+* 特に AWS の勉強として使用する場合は、上記の点に留意するか、大人しくプロ版を買うこと
+
 ## 環境
 * Ubuntu 24.04
 * Docker version 27.3.1, build ce12230
@@ -67,11 +74,13 @@ localstack-main  | Ready.
 
 ### LocalStack を GUI で操作・確認
 ※要 LocalStack アカウント  
-※aws-cli を使用した CUI の操作については後述
+※aws-cli を使用した CUI の操作については後述  
+※LAN 内の別の端末で起動した LocalStack を操作する場合は、ブラウザ版ではなくデスクトップ版を使用する
 
 * LocalStack のサイトに Sign in すると Dashboard が表示される
 * 左側のメニューの LocalStack Instances の Default Instance から localhost:4566 で接続可能な LocalStack に対して状態の確認や操作が可能  
-  * localhost:4566 以外に接続したい場合は、 LocalStack Instances をクリックすると表示される LocalStack Instance Management から Add Bookmark で追加する
+  * ~~localhost:4566 以外に接続したい場合は、 LocalStack Instances をクリックすると表示される LocalStack Instance Management から Add Bookmark で追加する~~
+  * LAN 内の別の端末で起動した LocalStack に接続したい場合は、LocalStack Desktop を使用する（恐らくブラウザ版だとセキュリティ的に無理）
 * 下図は Resource Browser で S3 バケットを表示した際のキャプチャ  
   * 右上の Region の指定を S3 バケットを作成したリージョンにすることを忘れずに！(2枚目の画像)  
   * 最新の状態が表示されない場合は、Buckets の横の更新ボタンを押す(2枚目の画像)
@@ -109,7 +118,8 @@ http://localhost:4566/sample-bucket/index.html
 
 ![alt text](images/README/image-2.png)
 
-※LocalStack だとデフォルトで外部からの接続が許可されてる？（要確認）
+※デフォルトで外部からの接続が許可されてる？（要確認）  
+　→ LocalStack はデフォルトで IAM ポリシーが無視される。詳細は [留意事項](#留意事項) を参照　
 
 ### S3 バケット内のオブジェクト一覧取得
 ```
@@ -129,3 +139,56 @@ $ aws s3 rb s3://sample-bucket/ --force --endpoint-url=http://localhost:4566 --p
 remove_bucket: sample-bucket
 ```
 ※`--force` バケット内にオブジェクトが残っていても強制的に削除（残っていたオブジェクトは自動削除）
+
+## メモ
+
+### Ubuntu 24.04 で LocalStack Desktop を起動する方法
+
+普通に起動しようとしても内部でエラー吐いて起動せず  
+たぶん Electron 製   
+
+* LocalStack にサインイン
+* 左側のメニューの下の方に LocalStack Desktop があるのでクリック
+* Linux をクリックして LocalStack-Desktop-community-1.0.7.AppImage をダウンロード  
+  ※バージョンは読み替えて
+* 端末から以下を実行  
+  ```
+  sudo apt install libfuse2
+  chmod +x ./LocalStack-Desktop-community-1.0.7.AppImage 
+  ./LocalStack-Desktop-community-1.0.7.AppImage --no-sandbox --disable-gpu
+  ``` 
+
+![alt text](images/README/image-3.png)
+
+#### エラー記録
+```
+$ ./LocalStack-Desktop-community-1.0.7.AppImage 
+dlopen(): error loading libfuse.so.2
+
+AppImages require FUSE to run. 
+You might still be able to extract the contents of this AppImage 
+if you run it with the --appimage-extract option. 
+See https://github.com/AppImage/AppImageKit/wiki/FUSE 
+for more information
+```
+libfuse2 をインストールして再度実行
+```
+$ ./LocalStack-Desktop-community-1.0.7.AppImage 
+[132373:1020/093714.717848:FATAL:setuid_sandbox_host.cc(158)] The SUID sandbox helper binary was found, but is not configured correctly. Rather than run without sandboxing I'm aborting now. You need to make sure that /tmp/.mount_LocalSSrtTmp/chrome-sandbox is owned by root and has mode 4755.
+Trace/breakpoint trap (コアダンプ)
+```
+`--no-sandbox` 付けて再度実行
+```
+$ ./LocalStack-Desktop-community-1.0.7.AppImage --no-sandbox
+(node:133750) NOTE: The AWS SDK for JavaScript (v2) will enter maintenance mode
+on September 8, 2024 and reach end-of-support on September 8, 2025.
+
+Please migrate your code to use AWS SDK for JavaScript (v3).
+For more information, check blog post at https://a.co/cUPnyil
+(Use `localstackdesktop --trace-warnings ...` to show where the warning was created)
+[133967:1020/093938.035200:ERROR:sandbox_linux.cc(376)] InitializeSandbox() called with multiple threads in process gpu-process.
+Checking for update
+Generated new staging user ID: 9b445c97-0045-5b45-83bf-d78243a58194
+バスエラー (コアダンプ)
+```
+`--disable-gpu` 付けて再度実行　→　起動できた
